@@ -1,0 +1,20 @@
+---
+kolab_version: "16"
+kolab_fqdn_hostname: "kolab.example.com"
+kolab_short_hostname: "kolab"
+
+# Answers for run.sh
+kolab_admin_password: "rootpw"
+kolab_dirmanag_password: "rootpw"
+kolab_ldap_domain: "dc=example,dc=com"
+kolab_timezone: "Europe/Berlin"
+cyrus_admin_password: "rootpw"
+mysql_root_password: "rootpw"
+mysql_kolab_password: "rootpw"
+
+ 
+
+# mappings for run.sh
+admin_password: "{{ kolab_admin_password }}"
+main_domain: "{{ kolab_fqdn_hostname }}"
+ldap_domain: "{{ kolab_ldap_domain }}"

@@ -1,0 +1,94 @@
+---
+# debconf set selection for postfix
+# debconf set selection for mysql
+
+
+
+- name: Add Kolab Debian repository
+  apt_repository:
+    repo: "deb http://obs.kolabsys.com/repositories/Kolab:/{{ kolab_version }}/Debian_{{ kolab_debian_version }}/ ./"
+    state: present
+    filename: 'kolab'
+
+- name: Add Kolab source Debian repository
+  apt_repository:
+    repo: "deb-src http://obs.kolabsys.com/repositories/Kolab:/{{ kolab_version }}/Debian_{{ kolab_debian_version }}/ ./"
+    state: present
+    filename: 'kolabsrc'
+
+- name: Add Kolab GPG repo key
+  apt_key:
+    url: "https://ssl.kolabsys.com/community.asc"
+    state: present
+    validate_certs: False
+
+- name: Ensure Kolab repos priority over Debian repos
+  copy:
+    src: etcaptprefkolab
+    dest: /etc/apt/preferences.d/kolab
+
+- name: Set undattended postfix installation - hostname
+  debconf:
+      name: postfix
+      question: postfix/mailname
+      value: "{{ kolab_fqdn_hostname  }}"
+      vtype: string
+#  command:
+
+- name: Set undattended postfix installation - type
+  debconf:
+      name: postfix
+      question: postfix/main_mailer_type
+      value: "Internet Site"
+      vtype: string
+#  command: "
+
+
+#- name: Set undattened mysql installation
+#debconf-set-selections <<< "postfix postfix/mailname string kolab.example.com "
+#debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'
+#debconf-set-selections <<< "mysql-server-5.5 mysql-server/root_password password rootpw"
+#debconf-set-selections <<< "mysql-server-5.5 mysql-server/root_password_again password rootpw"
+#echo "mysql-server-5.5 mysql-server/root_password password root" | debconf-set-selections
+#echo "mysql-server-5.5 mysql-server/root_password_again password root" | debconf-set-selections
+
+
+- name: Set undattened mysql installation - password
+  debconf:
+    name: mysql-server-5.5
+    question: mysql-server/root_password
+    value: "{{ mysql_root_password }}"
+    vtype: password
+
+- name: Set undattened mysql installation - password repeat
+  debconf:
+    name: mysql-server-5.5
+    question: root_password_again
+    value: "{{ mysql_root_password }}"
+    vtype: password
+
+- name: Force cache update before installation
+  apt:
+    update_cache: yes
+
+- name: Copy debconf script (DOUBLCHECK)
+  template:
+    src: setdeb.sh.j2
+    dest: /root/setdeb.sh
+    owner: root
+    group: root
+    mode: 0770
+
+- name: Execute setdeb.sh to install Kolab (DOUBLCHECK)
+  shell: /root/setdeb.sh
+
+- name: Install Kolab from repository using aptitude (new module might be needed)
+  command: aptitude -y install kolab
+  register: result
+  until: '"failed" not in result'
+  async: 3600
+  poll: 10
+  retries: 5
+  delay: 10
+  environment:
+    DEBIAN_FRONTEND: 'noninteractive'

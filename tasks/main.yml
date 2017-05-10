@@ -1,0 +1,66 @@
+---
+- name: Include distribution specific variables
+  include_vars: "{{ ansible_distribution }}.yml"
+  tags:
+    - kolab
+
+
+- name: Change server hostname
+  hostname:
+    name: "{{ kolab_short_hostname }}"
+
+- name: Replace hosts file with template
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+
+- name: restart networking
+  command: /etc/init.d/networking restart
+
+- include: Debian.yml
+  when: ansible_distribution == "Debian"
+  tags:
+    - kolab
+
+- include: CentOS.yml
+  when: ansible_distribution == "CentOS"
+  tags:
+    - kolab
+
+- include: RedHat.yml
+  when: ansible_distribution == "RedHat"
+  tags:
+    - kolab
+
+- name: Install expect
+  package:
+    name: expect
+    state: latest
+  tags:
+    - testme
+
+- name: Copy run.sh which installs undattened Kolab
+  template:
+    src: run.sh.j2
+    dest: /root/run.sh
+    owner: root
+    group: root
+    mode: 0770
+  tags:
+    - testme
+
+- name: Execute run.sh to install Kolab
+  shell: /root/run.sh
+
+- name: Reboot server
+  shell: sleep 2 && shutdown -r now
+  async: 1
+  poll: 0
+  tags:
+    - reboot
+
+- name: Wait for server to get back online
+  local_action: wait_for host="{{ inventory_hostname }}" port=22 delay=5 timeout=600
+  sudo: false
+  tags:
+    - reboot
